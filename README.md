@@ -3,8 +3,8 @@ A command to provide a friendly way to do an AWS STS assumeRole operation so you
 using a particular set of permissions.
 
 ## Requirements
-Tested on python 2.7 and python 3
-boto3 python library
+  - Tested on python 2.7 and python 3
+  - boto3 python library (`pip install -r requirements.txt` if necessary)
 
 ## Usage
 ```
