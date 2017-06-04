@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, os.path
-import json, time
+import os, time
 import logging
 import boto3
 import argparse
@@ -9,63 +8,25 @@ import multiprocessing
 
 def parse_cmdline():
   p = argparse.ArgumentParser(description='Create an environment for interacting with the AWS API using an assumed role')
-  p.add_argument('-l', '--list-roles', help='list roles you are able to assume, updates cached roles', action='store_true')
+  p.add_argument('-l', '--list-roles', help='list role ARNs you are able to assume', action='store_true')
   p.add_argument('-v', '--verbose', help='print verbose/debug messages', action='store_const', const=logging.DEBUG, default=logging.INFO)
-  p.add_argument('role', nargs='?', help='name of role to assume')
-  p.add_argument('cmd', nargs=argparse.REMAINDER, help='command to execute using assumed role')
+  p.add_argument('profile', nargs='?', help='name of profile')
+  p.add_argument('cmd', nargs=argparse.REMAINDER, help='command to execute using configured profile')
 
   return p.parse_args()
 
-def get_roles_for_user(user_name):
-  roles = []
-  tmp = []
-  iam_user = iam.User(user_name)
+def get_user_roles(user_name, inline=True):
+  r = []
+  u = iam.User(user_name)
 
-  tmp += get_user_roles(iam_user)
-  tmp += get_group_roles(iam_user.groups.all())
+  if inline:
+    r = get_inline_roles(u)
+  else:
+    r = get_attached_roles(u)
 
-  # Weed out any duplicates
-  for t in tmp:
-    if t not in roles:
-      roles.append(t)
+  return r
 
-  roles.sort()
-  return roles
-
-def get_user_roles(user):
-  roles = []
-  roles += get_inline_roles(user)
-  roles += get_attached_roles(user)
-
-  logging.debug("USER ROLES: %s", roles)
-  return roles
-
-def get_group_roles(groups):
-  roles = []
-  tasks = []
-  pool  = multiprocessing.Pool()
-
-  for g in groups:
-    # Process groups in parallel, hoping to speed up execution time. The
-    # thought being a user will belong to many groups each providing a single,
-    # or very small number, of policies as part of the group
-    # The iam.Group object isn't pickle-able, so pass the name, and create the
-    # object in fetch_group_roles()
-    t = pool.apply_async(fetch_group_roles, (g.name, True))
-    t = pool.apply_async(fetch_group_roles, (g.name, False))
-    tasks.append(t)
-
-  pool.close()
-
-  for t in tasks:
-    roles += t.get()
-
-  pool.join()
-
-  logging.debug("GROUP ROLES: %s", roles)
-  return roles
-
-def fetch_group_roles(group_name, inline=True):
+def get_group_roles(group_name, inline=True):
   r = []
   g = iam.Group(group_name)
 
@@ -89,7 +50,7 @@ def get_attached_roles(res):
   roles = []
 
   for p in res.attached_policies.all():
-    d = iam.PolicyVersion(p.arn, p.default_version_id).document # AWS API call each time ... slow!
+    d = iam.PolicyVersion(p.arn, p.default_version_id).document
     roles += parse_policy_doc(d)
 
   return roles
@@ -120,55 +81,6 @@ def parse_policy_doc(doc):
   logging.debug("roles parsed from policy document: %s", role_arns)
   return role_arns
 
-def get_cache_file(user_id):
-  conf_dir = os.path.join(os.environ['HOME'], '.aws')
-  cache_file = "%s_roles_cache.json" % (user_id,)
-
-  if os.getenv('AWS_CONFIG_FILE'):
-    # Per awscli docs
-    conf_dir = os.path.dirname(os.environ['AWS_CONFIG_FILE'])
-  elif os.getenv('AWS_CREDENTIAL_FILE'):
-    # Compatibility with 'aws-mfa' program
-    conf_dir = os.path.dirname(os.environ['AWS_CREDENTIAL_FILE'])
-
-  if not os.path.isdir(conf_dir):
-    logging.debug("creating cache directory %s", conf_dir)
-    os.makedirs(conf_dir)
-
-  cache_path = os.path.join(conf_dir, cache_file)
-  logging.debug("returning cache file path %s", cache_path)
-  return cache_path
-
-def update_cache(user_id, roles):
-  cache = { 'timestamp': time.time(), 'roles': roles }
-
-  with open(get_cache_file(user_id), 'w') as f:
-    json.dump(cache, f)
-
-def check_cache(user_id, role):
-  j = {}
-  role_arn = None
-  file = get_cache_file(user_id)
-
-  if os.path.isfile(file):
-    with open(file, 'r') as f:
-      j = json.load(f)
-
-    for r in j['roles']:
-      logging.debug("checking if %s matches ARN %s", role, r)
-      if r.endswith(':role/%s' % (role,)):
-        logging.debug("MATCH! found role %s in cache (arn: %s)", role, r)
-        role_arn = r
-        break
-  else:
-    logging.debug("role cache file %s does not exist", file)
-
-  return role_arn
-
-def parse_role_arn(arn):
-  role = arn.split(':')[-1]
-  return role.split('/')[-1]
-
 if __name__ == '__main__':
   args = parse_cmdline()
   logging.basicConfig(level=args.verbose)
@@ -178,50 +90,47 @@ if __name__ == '__main__':
   logging.getLogger('boto3').setLevel(logging.WARNING)
 
   iam  = boto3.resource('iam')
-  user = iam.CurrentUser()
-
-  # Make these AWS API calls only once
-  logging.debug("getting IAM user details")
-  user_id = user.user_id
-  user_name = user.user_name
 
   if args.list_roles:
-    roles = get_roles_for_user(user_name)
-    update_cache(user_id, roles)
+    roles = []
+    tasks = []
+    pool = multiprocessing.Pool()
+    user = iam.CurrentUser()
+    iam_user = iam.User(user.user_name)
 
-    print("Available roles for %s (%s)" % (user_name, user.arn))
+    tasks.append(pool.apply_async(get_user_roles, (iam_user.user_name, True)))
+    tasks.append(pool.apply_async(get_user_roles, (iam_user.user_name, False)))
+
+    for g in iam_user.groups.all():
+      tasks.append(pool.apply_async(get_group_roles, (g.group_name, True)))
+      tasks.append(pool.apply_async(get_group_roles, (g.group_name, False)))
+
+    pool.close()
+
+    for t in tasks:
+      for r in t.get():
+        if r not in roles:
+          roles.append(r)
+
+    pool.join()
+
+    print("Available role ARNs for %s (%s)" % (user.user_name, user.arn))
+    roles.sort()
     for r in roles:
-      print("  %s" % (parse_role_arn(r),))
+      print("  %s" % (r,))
   else:
-    role_name = args.role
-    role_arn  = check_cache(user_id, role_name)
+    sess = boto3.Session(profile_name=args.profile) # Does assumeRole for us
+    c = sess.get_credentials() # MFA auth happens here, if necessary
 
-    if role_arn:
-      # cache hit
-      logging.info("FOUND ARN (cached): %s", role_arn)
-    else:
-      # cache miss
-      roles = get_roles_for_user(user_name)
-      update_cache(user_id, roles)
+    os.environ['AWS_ACCESS_KEY_ID'] = c.access_key
+    os.environ['AWS_SECRET_ACCESS_KEY'] = c.secret_key
 
-      role_arn = check_cache(user_id, role_name)
-      if role_arn:
-        logging.info("FOUND ARN (updated): %s", role_arn)
-      else:
-        logging.error("You are not allowed to assume role %s", role_name)
-        sys.exit(1)
-
-    ### Do some actual work (call assume role, prep environment)
-    sts = boto3.client('sts')
-    res = sts.assume_role(RoleArn = role_arn, RoleSessionName = user_name)
-    role_creds = res['Credentials']
-    os.environ['AWS_ACCESS_KEY_ID'] = role_creds['AccessKeyId']
-    os.environ['AWS_SECRET_ACCESS_KEY'] = role_creds['SecretAccessKey']
-    os.environ['AWS_SESSION_TOKEN']  = role_creds['SessionToken']
-    os.environ['AWS_SECURITY_TOKEN'] = role_creds['SessionToken']
+    if c.token:
+      os.environ['AWS_SESSION_TOKEN']  = c.token
+      os.environ['AWS_SECURITY_TOKEN'] = c.token # Backwards compatibility
 
     if len(args.cmd) == 0:
-      # role name only, output the keys and tokens as env vars
+      # profile name only, output the keys and tokens as env vars
       logging.debug("no command detected, outputting eval()-able role credentials")
       for i in ('AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN', 'AWS_SECURITY_TOKEN'):
         print("export %s='%s'" % (i, os.getenv(i)))
