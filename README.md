@@ -13,8 +13,8 @@ See the following for more information on AWS SDK configuration files:
   - boto3 python library (`pip install -r requirements.txt` if necessary)
 
 ## Installation
-Other than ensuring python and the boto3 library are available, this program is self-contained. It can be copied
-anywhere you need it.
+Other than ensuring python and the boto3 library are available, this program is self-contained and stays inside
+of the python standard library. It can be copied anywhere you need it.
 
 ## Usage
 ```
