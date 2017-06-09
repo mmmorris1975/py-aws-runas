@@ -10,7 +10,7 @@ See the following for more information on AWS SDK configuration files:
 
 ## Requirements
   - Tested on python 2.7 and python 3
-  - boto3 python library (`pip install -r requirements.txt` if necessary)
+  - boto3 python library, version 1.3.1 or higher (`pip install -r requirements.txt` if necessary)
 
 ## Installation
 Other than ensuring python and the boto3 library are available, this program is self-contained and stays inside
