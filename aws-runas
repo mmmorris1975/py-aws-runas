@@ -146,11 +146,12 @@ if __name__ == '__main__':
   logging.getLogger('botocore').setLevel(logging.WARNING)
   logging.getLogger('boto3').setLevel(logging.WARNING)
 
+  iam  = boto3.resource('iam')
+
   if args.list_roles:
     roles = []
     tasks = []
     pool = multiprocessing.Pool()
-    iam  = boto3.resource('iam')
     user = iam.CurrentUser()
     iam_user = iam.User(user.user_name)
 
