@@ -3,6 +3,10 @@ A command to provide a friendly way to do an AWS STS assumeRole operation so you
 using a particular set of permissions.  Includes integration with roles requiring MFA authentication!  Works
 off of profile names configured in the AWS SDK configuration file.
 
+Just like the awscli, this utility will cache the assumed role credentials.  If using MFA, when the credentials
+expire you will be prompted to re-enter the MFA token value to refresh the credentials.  If MFA is not requred
+for the assumed role, the credentials should refresh automatically.
+
 See the following for more information on AWS SDK configuration files:
   - http://docs.aws.amazon.com/cli/latest/userguide/cli-config-files.html
   - https://boto3.readthedocs.io/en/latest/guide/quickstart.html#configuration

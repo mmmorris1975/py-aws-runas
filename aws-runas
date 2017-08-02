@@ -2,9 +2,54 @@
 
 import os, time
 import logging
+import json
 import boto3
 import argparse
 import multiprocessing
+import botocore.session
+
+from botocore.exceptions import ProfileNotFound
+
+# cribbed from the awscli assumerole.py customization module
+class JSONFileCache(object):
+
+  CACHE_DIR = os.path.expanduser(os.path.join('~', '.aws', 'cli', 'cache'))
+
+  def __init__(self, working_dir=CACHE_DIR):
+    self._working_dir = working_dir
+
+  def __contains__(self, cache_key):
+    actual_key = self._convert_cache_key(cache_key)
+    return os.path.isfile(actual_key)
+
+  def __getitem__(self, cache_key):
+    actual_key = self._convert_cache_key(cache_key)
+
+    try:
+      with open(actual_key) as f:
+        return json.load(f)
+    except (OSError, ValueError, IOError):
+      raise KeyError(cache_key)
+
+  def __setitem__(self, cache_key, value):
+    full_key = self._convert_cache_key(cache_key)
+
+    try:
+      file_content = json.dumps(value)
+    except (TypeError, ValueError):
+      raise ValueError("Value cannot be cached, must be "
+                       "JSON serializable: %s" % value)
+
+    if not os.path.isdir(self._working_dir):
+      os.makedirs(self._working_dir)
+
+    with os.fdopen(os.open(full_key, os.O_WRONLY | os.O_CREAT, 0o600), 'w') as f:
+      f.truncate()
+      f.write(file_content)
+
+  def _convert_cache_key(self, cache_key):
+    full_path = os.path.join(self._working_dir, cache_key + '.json')
+    return full_path
 
 def parse_cmdline():
   p = argparse.ArgumentParser(description='Create an environment for interacting with the AWS API using an assumed role')
@@ -81,6 +126,18 @@ def parse_policy_doc(doc):
   logging.debug("roles parsed from policy document: %s", role_arns)
   return role_arns
 
+def inject_assume_role_provider_cache(session):
+  # Add ability to use a json file based credential cache for assumed role creds
+  # Inspired by the awscli assumerole customization
+  try:
+    cred_chain = session.get_component('credential_provider')
+  except ProfileNotFound:
+    logging.warning("Profile not found, will not use credential cache")
+    return
+
+  provider = cred_chain.get_provider('assume-role')
+  provider.cache = JSONFileCache()
+
 if __name__ == '__main__':
   args = parse_cmdline()
   logging.basicConfig(level=args.verbose)
@@ -89,12 +146,11 @@ if __name__ == '__main__':
   logging.getLogger('botocore').setLevel(logging.WARNING)
   logging.getLogger('boto3').setLevel(logging.WARNING)
 
-  iam  = boto3.resource('iam')
-
   if args.list_roles:
     roles = []
     tasks = []
     pool = multiprocessing.Pool()
+    iam  = boto3.resource('iam')
     user = iam.CurrentUser()
     iam_user = iam.User(user.user_name)
 
@@ -119,7 +175,9 @@ if __name__ == '__main__':
     for r in roles:
       print("  %s" % (r,))
   else:
-    sess = boto3.Session(profile_name=args.profile) # Does assumeRole for us
+    s = botocore.session.get_session()
+    sess = boto3.Session(profile_name=args.profile, botocore_session=s) # Does assumeRole for us
+    inject_assume_role_provider_cache(s)
     c = sess.get_credentials() # MFA auth happens here, if necessary
 
     os.environ['AWS_ACCESS_KEY_ID'] = c.access_key
