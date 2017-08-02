@@ -2,7 +2,7 @@
 
 import os, time
 import logging
-import json
+import json, datetime
 import boto3
 import argparse
 import multiprocessing
@@ -35,7 +35,7 @@ class JSONFileCache(object):
     full_key = self._convert_cache_key(cache_key)
 
     try:
-      file_content = json.dumps(value)
+      file_content = json.dumps(value, default=self._json_encoder)
     except (TypeError, ValueError):
       raise ValueError("Value cannot be cached, must be "
                        "JSON serializable: %s" % value)
@@ -46,6 +46,12 @@ class JSONFileCache(object):
     with os.fdopen(os.open(full_key, os.O_WRONLY | os.O_CREAT, 0o600), 'w') as f:
       f.truncate()
       f.write(file_content)
+
+  def _json_encoder(self, obj):
+    if isinstance(obj, datetime.datetime):
+      return obj.isoformat()
+    else:
+      return obj
 
   def _convert_cache_key(self, cache_key):
     full_path = os.path.join(self._working_dir, cache_key + '.json')
