@@ -15,6 +15,7 @@ setup(
   long_description=long_desc,
   url='https://github.com/mmmorris1975/aws-runas',
   author='Michael Morris',
+  author_email='mmmorris1975@netscape.net',
   license='MIT',
   classifiers=[
     'Development Status :: 4 - Beta',
