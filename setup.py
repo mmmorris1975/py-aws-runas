@@ -10,7 +10,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
   name='aws-runas',
-  version='0.1.0',
+  version='0.1.1',
   description='Execute a command using an AWS assumed role',
   long_description=long_desc,
   url='https://github.com/mmmorris1975/aws-runas',
