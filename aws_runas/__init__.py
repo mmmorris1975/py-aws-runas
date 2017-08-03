@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import os, time
 import logging
 import json, datetime
@@ -9,6 +7,8 @@ import multiprocessing
 import botocore.session
 
 from botocore.exceptions import ProfileNotFound
+
+__VERSION__ = '0.1.2'
 
 # cribbed from the awscli assumerole.py customization module
 class JSONFileCache(object):
@@ -61,6 +61,7 @@ def parse_cmdline():
   p = argparse.ArgumentParser(description='Create an environment for interacting with the AWS API using an assumed role')
   p.add_argument('-l', '--list-roles', help='list role ARNs you are able to assume', action='store_true')
   p.add_argument('-v', '--verbose', help='print verbose/debug messages', action='store_const', const=logging.DEBUG, default=logging.INFO)
+  p.add_argument('-V', '--version', help='print program version and exit', action='store_true')
   p.add_argument('profile', nargs='?', help='name of profile')
   p.add_argument('cmd', nargs=argparse.REMAINDER, help='command to execute using configured profile')
 
@@ -146,6 +147,11 @@ def inject_assume_role_provider_cache(session):
 
 def main():
   args = parse_cmdline()
+
+  if args.version:
+    print("VERSION: %s" % __VERSION__)
+    exit(0)
+
   logging.basicConfig(level=args.verbose)
 
   # AWS lib gets very chatty, turn it down a bit

@@ -2,6 +2,8 @@ from setuptools import setup
 from codecs import open
 from os import path
 
+import aws_runas
+
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the README file
@@ -10,7 +12,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
   name='aws-runas',
-  version='0.1.1',
+  version=aws_runas.__VERSION__,
   description='Execute a command using an AWS assumed role',
   long_description=long_desc,
   url='https://github.com/mmmorris1975/aws-runas',
