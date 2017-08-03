@@ -144,7 +144,7 @@ def inject_assume_role_provider_cache(session):
   provider = cred_chain.get_provider('assume-role')
   provider.cache = JSONFileCache()
 
-if __name__ == '__main__':
+def main():
   args = parse_cmdline()
   logging.basicConfig(level=args.verbose)
 
@@ -152,9 +152,10 @@ if __name__ == '__main__':
   logging.getLogger('botocore').setLevel(logging.WARNING)
   logging.getLogger('boto3').setLevel(logging.WARNING)
 
-  iam  = boto3.resource('iam')
-
   if args.list_roles:
+    global iam
+    iam = boto3.resource('iam')
+
     roles = []
     tasks = []
     pool = multiprocessing.Pool()
