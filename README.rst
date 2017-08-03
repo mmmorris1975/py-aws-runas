@@ -44,6 +44,7 @@ Usage
 |   -h, --help        show this help message and exit
 |   -l, --list-roles  list role ARNs you are able to assume
 |   -v, --verbose     print verbose/debug messages
+|   -V, --version     print program version and exit
 
 Listing available roles
 -----------------------
