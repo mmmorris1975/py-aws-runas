@@ -4,6 +4,9 @@ package:
 upload: package
 	twine upload dist/*
 
+install:
+	pip install .
+
 clean:
 	rm -rf build dist *.egg-info
 
