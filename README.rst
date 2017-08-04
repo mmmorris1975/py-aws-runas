@@ -26,7 +26,7 @@ Requirements
 Installation
 ============
 
-Using `pip` is the preferred method to install this tool, and will install the package from pypi.  `pip install aws-cli`
+Using `pip` is the preferred method to install this tool, and will install the package from pypi.  `pip install aws-runas`
 
 It can also be installed via `pip` from a local copy of the source repo, `pip install .` from the repo directory should do the trick.
 
