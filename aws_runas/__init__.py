@@ -8,7 +8,7 @@ import botocore.session
 
 from botocore.exceptions import ProfileNotFound
 
-__VERSION__ = '0.1.2'
+__VERSION__ = '0.1.3'
 
 # cribbed from the awscli assumerole.py customization module
 class JSONFileCache(object):
