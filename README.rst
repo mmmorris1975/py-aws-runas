@@ -29,6 +29,7 @@ Installation
 Using `pip` is the preferred method to install this tool, and will install the package from pypi.  `pip install aws-runas`
 
 It can also be installed via `pip` from a local copy of the source repo, `pip install .` from the repo directory should do the trick.
+Running `make install` should also work as well.
 
 Usage
 =====
@@ -103,5 +104,6 @@ The following targets are available in the Makefile:
 
 * `package` - the default target, calls the setup.py script to create the package to upload to pypi.
 * `upload` - depends on the `package` target, and uploads the generated package archive to pypi.
+* `install` - use `pip` to install the package locally
 * `clean` - clean up the artifacts left by the `package` step.
 * `distclean` - depends on the `clean` target, and additionally cleans up misc. files.
