@@ -67,8 +67,9 @@ Example:
 | export AWS_SECRET_ACCESS_KEY='yyyyyy'
 | export AWS_SESSION_TOKEN='zzzzz'
 
+
 Or simply `eval $(aws-runas admin-profile)` to add these env vars in the current session.
-With the addition of caching credentials for the lifetime of the session token, with the
+With the addition of caching credentials for the lifetime of the session token, and the
 ability to automatically refresh the credentials, eval-ing the output of this utility is
 no longer necessary for most cases, but will be left as a feature of this tool for the
 foreseeable future.
