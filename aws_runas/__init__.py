@@ -8,7 +8,7 @@ import botocore.session
 
 from botocore.exceptions import ProfileNotFound
 
-__VERSION__ = '0.1.3'
+__VERSION__ = '0.1.4'
 
 # cribbed from the awscli assumerole.py customization module
 class JSONFileCache(object):
@@ -205,7 +205,10 @@ def main():
       # profile name only, output the keys and tokens as env vars
       logging.debug("no command detected, outputting eval()-able role credentials")
       for i in ('AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN', 'AWS_SECURITY_TOKEN'):
-        print("export %s='%s'" % (i, os.getenv(i)))
+        if os.name == 'nt':
+          print("set %s='%s'" % (i, os.getenv(i)))
+        else:
+          print("export %s='%s'" % (i, os.getenv(i)))
     else:
       # role name and command to run
       logging.debug("detected command, will run command using assumed role")
