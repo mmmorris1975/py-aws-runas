@@ -60,6 +60,7 @@ class JSONFileCache(object):
 def parse_cmdline():
   p = argparse.ArgumentParser(description='Create an environment for interacting with the AWS API using an assumed role')
   p.add_argument('-l', '--list-roles', help='list role ARNs you are able to assume', action='store_true')
+  p.add_argument('-m', '--list-mfa', help='list the ARN of the MFA device associated with the account', action='store_true')
   p.add_argument('-v', '--verbose', help='print verbose/debug messages', action='store_const', const=logging.DEBUG, default=logging.INFO)
   p.add_argument('-V', '--version', help='print program version and exit', action='store_true')
   p.add_argument('profile', nargs='?', help='name of profile')
@@ -158,7 +159,13 @@ def main():
   logging.getLogger('botocore').setLevel(logging.WARNING)
   logging.getLogger('boto3').setLevel(logging.WARNING)
 
-  if args.list_roles:
+  if args.list_mfa:
+    c = boto3.client('iam')
+    r = c.list_mfa_devices()
+
+    for d in r.get('MFADevices'):
+      print(d.get('SerialNumber'))
+  elif args.list_roles:
     global iam
     iam = boto3.resource('iam')
 

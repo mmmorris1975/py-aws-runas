@@ -33,8 +33,7 @@ Running `make install` should also work as well.
 
 Usage
 =====
-
-| usage: aws-runas [-h] [-l] [-v] [profile] ...
+| usage: aws-runas [-h] [-l] [-m] [-v] [-V] [profile] ...
 |
 | Create an environment for interacting with the AWS API using an assumed role
 |
@@ -45,6 +44,7 @@ Usage
 | optional arguments:
 |   -h, --help        show this help message and exit
 |   -l, --list-roles  list role ARNs you are able to assume
+|   -m, --list-mfa    list the ARN of the MFA device associated with the account
 |   -v, --verbose     print verbose/debug messages
 |   -V, --version     print program version and exit
 
@@ -52,6 +52,12 @@ Listing available roles
 -----------------------
 
 Use the `-l` option to see the list of role ARNs your IAM account is authorized to assume.
+May be helpful for setting up your AWS config file.
+
+Listing available MFA devices
+-----------------------------
+
+Use the `-m` option to list the ARNs of any MFA devices associated with your IAM account.
 May be helpful for setting up your AWS config file.
 
 Generating credentials
