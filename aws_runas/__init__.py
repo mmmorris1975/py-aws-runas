@@ -4,7 +4,6 @@ import json, datetime
 import boto3
 import argparse
 import multiprocessing
-import botocore.session
 
 from botocore.exceptions import ProfileNotFound
 
