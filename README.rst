@@ -52,13 +52,17 @@ Listing available roles
 -----------------------
 
 Use the `-l` option to see the list of role ARNs your IAM account is authorized to assume.
-May be helpful for setting up your AWS config file.
+May be helpful for setting up your AWS config file.  If `profile` arg is specified, list
+roles available for the given profile, or the default profile if not specified.  May be
+useful if you have multiple profiles configured each with their own IAM role configurations
 
 Listing available MFA devices
 -----------------------------
 
 Use the `-m` option to list the ARNs of any MFA devices associated with your IAM account.
-May be helpful for setting up your AWS config file.
+May be helpful for setting up your AWS config file.  If `profile` arg is specified, list
+MFA devices available for the given profile, or the default profile if not specified. May
+be usefule if you have multiple profiles configured each with their own MFA device
 
 Generating credentials
 ----------------------

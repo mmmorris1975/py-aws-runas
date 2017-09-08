@@ -8,7 +8,7 @@ import botocore.session
 
 from botocore.exceptions import ProfileNotFound
 
-__VERSION__ = '0.1.5'
+__VERSION__ = '0.1.6'
 
 # cribbed from the awscli assumerole.py customization module
 class JSONFileCache(object):
@@ -159,15 +159,17 @@ def main():
   logging.getLogger('botocore').setLevel(logging.WARNING)
   logging.getLogger('boto3').setLevel(logging.WARNING)
 
+  ses = boto3.Session(profile_name=args.profile) # Does AssumeRole for us
+
   if args.list_mfa:
-    c = boto3.client('iam')
+    c = ses.client('iam')
     r = c.list_mfa_devices()
 
     for d in r.get('MFADevices'):
       print(d.get('SerialNumber'))
   elif args.list_roles:
     global iam
-    iam = boto3.resource('iam')
+    iam = ses.resource('iam')
 
     roles = []
     tasks = []
@@ -196,10 +198,8 @@ def main():
     for r in roles:
       print("  %s" % (r,))
   else:
-    s = botocore.session.get_session()
-    sess = boto3.Session(profile_name=args.profile, botocore_session=s) # Does assumeRole for us
-    inject_assume_role_provider_cache(s)
-    c = sess.get_credentials() # MFA auth happens here, if necessary
+    inject_assume_role_provider_cache(ses._session)
+    c = ses.get_credentials() # MFA auth happens here, if necessary
 
     os.environ['AWS_ACCESS_KEY_ID'] = c.access_key
     os.environ['AWS_SECRET_ACCESS_KEY'] = c.secret_key
