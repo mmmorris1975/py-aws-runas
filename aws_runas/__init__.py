@@ -135,7 +135,7 @@ def parse_policy_doc(doc):
 
 def inject_assume_role_provider_cache(session):
   # Add ability to use a json file based credential cache for assumed role creds
-  # Inspired by the awscli assumerole customization
+  # Inspired by the awscli assumerole customization, and compatible with awscli caching
   try:
     cred_chain = session.get_component('credential_provider')
   except ProfileNotFound:
