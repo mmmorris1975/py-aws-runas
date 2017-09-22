@@ -7,54 +7,72 @@ import multiprocessing
 
 from botocore.exceptions import ProfileNotFound
 
-__VERSION__ = '0.1.6'
+try:
+  # Python 3
+  from configparser import ConfigParser
+except ImportError:
+  # Python 2
+  from ConfigParser import ConfigParser
 
-# cribbed from the awscli assumerole.py customization module
-class JSONFileCache(object):
+__VERSION__ = '0.2.0-alpha'
 
-  CACHE_DIR = os.path.expanduser(os.path.join('~', '.aws', 'cli', 'cache'))
+class SessionTokenProvider:
+  CACHE_DIR = os.path.expanduser(os.path.join('~', '.aws'))
+  DT_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 
-  def __init__(self, working_dir=CACHE_DIR):
-    self._working_dir = working_dir
+  def __init__(self, profile, mfa_serial):
+    self.profile = profile
+    self.mfa_serial = mfa_serial
+    self.cache_file = os.path.join(self.CACHE_DIR, ".aws_session_token_" + profile)
 
-  def __contains__(self, cache_key):
-    actual_key = self._convert_cache_key(cache_key)
-    return os.path.isfile(actual_key)
-
-  def __getitem__(self, cache_key):
-    actual_key = self._convert_cache_key(cache_key)
-
-    try:
-      with open(actual_key) as f:
-        return json.load(f)
-    except (OSError, ValueError, IOError):
-      raise KeyError(cache_key)
-
-  def __setitem__(self, cache_key, value):
-    full_key = self._convert_cache_key(cache_key)
+  def _update_cache(self, data):
+    f = open(self.cache_file, 'w')
 
     try:
-      file_content = json.dumps(value, default=self._json_encoder)
-    except (TypeError, ValueError):
-      raise ValueError("Value cannot be cached, must be "
-                       "JSON serializable: %s" % value)
+      json.dump(data, f, default=self._fixup_aws_res)
+    finally:
+      if f:
+        f.close()
 
-    if not os.path.isdir(self._working_dir):
-      os.makedirs(self._working_dir)
-
-    with os.fdopen(os.open(full_key, os.O_WRONLY | os.O_CREAT, 0o600), 'w') as f:
-      f.truncate()
-      f.write(file_content)
-
-  def _json_encoder(self, obj):
+  def _fixup_aws_res(self, obj):
     if isinstance(obj, datetime.datetime):
-      return obj.isoformat()
+      return obj.strftime(self.DT_FORMAT)
     else:
       return obj
 
-  def _convert_cache_key(self, cache_key):
-    full_path = os.path.join(self._working_dir, cache_key + '.json')
-    return full_path
+  def _fetch_cache_token(self):
+    expired = True
+    f = open(self.cache_file, 'r')
+
+    try:
+      tok = json.load(f)
+      exp_time = datetime.datetime.strptime(tok['Credentials']['Expiration'], self.DT_FORMAT)
+      expired = time.mktime(exp_time.utctimetuple()) < time.mktime(datetime.datetime.utcnow().utctimetuple())
+    finally:
+      if f:
+        f.close()
+
+    return (tok, expired)
+
+  def _fetch_fresh_token(self):
+    mfa_token = input("Enter MFA Code: ")
+
+    ses = boto3.Session(profile_name=self.profile)
+    sts = ses.client('sts')
+    res = sts.get_session_token(SerialNumber=self.mfa_serial, TokenCode=mfa_token)
+    self._update_cache(res)
+
+    return res
+
+  def get_credentials(self):
+    expired = True
+    if os.path.isfile(self.cache_file):
+      (res, expired) = self._fetch_cache_token()
+
+    if expired:
+      res = self._fetch_fresh_token()
+
+    return res
 
 def parse_cmdline():
   p = argparse.ArgumentParser(description='Create an environment for interacting with the AWS API using an assumed role')
@@ -133,17 +151,19 @@ def parse_policy_doc(doc):
   logging.debug("roles parsed from policy document: %s", role_arns)
   return role_arns
 
-def inject_assume_role_provider_cache(session):
-  # Add ability to use a json file based credential cache for assumed role creds
-  # Inspired by the awscli assumerole customization, and compatible with awscli caching
-  try:
-    cred_chain = session.get_component('credential_provider')
-  except ProfileNotFound:
-    logging.warning("Profile not found, will not use credential cache")
-    return
+def parse_aws_config(profile):
+  cfg_file = os.getenv('AWS_CONFIG_FILE', os.path.expanduser(os.path.join('~', '.aws', 'config')))
+  cfg_profile = "profile " + profile
+  logging.debug("CONFIG FILE: %s", cfg_file)
 
-  provider = cred_chain.get_provider('assume-role')
-  provider.cache = JSONFileCache()
+  p = ConfigParser()
+  p.read(cfg_file)
+
+  src_profile = p.get(cfg_profile, 'source_profile')
+  role_arn = p.get(cfg_profile, 'role_arn')
+  mfa_serial = p.get(src_profile, 'mfa_serial')
+
+  return (src_profile, role_arn, mfa_serial)
 
 def main():
   args = parse_cmdline()
@@ -197,15 +217,26 @@ def main():
     for r in roles:
       print("  %s" % (r,))
   else:
-    inject_assume_role_provider_cache(ses._session)
-    c = ses.get_credentials() # MFA auth happens here, if necessary
+    (src_profile, role_arn, mfa_serial) = parse_aws_config(args.profile)
+    p = SessionTokenProvider(profile=src_profile, mfa_serial=mfa_serial)
+    res = p.get_credentials()
 
-    os.environ['AWS_ACCESS_KEY_ID'] = c.access_key
-    os.environ['AWS_SECRET_ACCESS_KEY'] = c.secret_key
+    creds = res['Credentials']
+    tok_ses = boto3.Session( aws_access_key_id=creds['AccessKeyId'], aws_secret_access_key=creds['SecretAccessKey'],
+        aws_session_token=creds['SessionToken'])
+    tok_sts = tok_ses.client('sts')
 
-    if c.token:
-      os.environ['AWS_SESSION_TOKEN']  = c.token
-      os.environ['AWS_SECURITY_TOKEN'] = c.token # Backwards compatibility
+    # This becomes much less important to cache, unless we want to really focus on compatibility with awscli AssumeRole cred cache
+    ses_name = "AWS-RUNAS-%s-%d" % (os.getenv("USER", "__"), time.time())
+    res = tok_sts.assume_role(RoleArn=role_arn, RoleSessionName=ses_name)
+    ar_creds = res['Credentials']
+
+    os.environ['AWS_ACCESS_KEY_ID'] = ar_creds['AccessKeyId']
+    os.environ['AWS_SECRET_ACCESS_KEY'] = ar_creds['SecretAccessKey']
+
+    if ar_creds['SessionToken']:
+      os.environ['AWS_SESSION_TOKEN']  = ar_creds['SessionToken']
+      os.environ['AWS_SECURITY_TOKEN'] = ar_creds['SessionToken'] # Backwards compatibility
 
     if len(args.cmd) == 0:
       # profile name only, output the keys and tokens as env vars
