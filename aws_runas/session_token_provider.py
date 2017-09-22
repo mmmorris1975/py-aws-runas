@@ -4,7 +4,6 @@ import boto3
 
 class SessionTokenProvider:
   CACHE_DIR = os.path.expanduser(os.path.join('~', '.aws'))
-  DT_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 
   def __init__(self, profile, mfa_serial):
     self.profile = profile
@@ -22,7 +21,8 @@ class SessionTokenProvider:
 
   def _fixup_aws_res(self, obj):
     if isinstance(obj, datetime.datetime):
-      return obj.strftime(self.DT_FORMAT)
+      # Use unix/posix timestamp for ultimate portablility
+      return int(time.mktime(obj.utctimetuple()))
     else:
       return obj
 
@@ -32,8 +32,7 @@ class SessionTokenProvider:
 
     try:
       tok = json.load(f)
-      exp_time = datetime.datetime.strptime(tok['Credentials']['Expiration'], self.DT_FORMAT)
-      expired = time.mktime(exp_time.utctimetuple()) < time.mktime(datetime.datetime.utcnow().utctimetuple())
+      expired = tok['Credentials']['Expiration'] < time.time()
     finally:
       if f:
         f.close()
@@ -45,7 +44,7 @@ class SessionTokenProvider:
 
     ses = boto3.Session(profile_name=self.profile)
     sts = ses.client('sts')
-    res = sts.get_session_token(SerialNumber=self.mfa_serial, TokenCode=mfa_token)
+    res = sts.get_session_token(SerialNumber=self.mfa_serial, TokenCode=str(mfa_token))
     self._update_cache(res)
 
     return res
