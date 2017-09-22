@@ -21,7 +21,7 @@ class SessionTokenProvider:
 
   def _fixup_aws_res(self, obj):
     if isinstance(obj, datetime.datetime):
-      # Use unix/posix timestamp for ultimate portablility
+      # Use unix/posix UTC timestamp for ultimate portablility
       return int(time.mktime(obj.utctimetuple()))
     else:
       return obj
@@ -32,7 +32,8 @@ class SessionTokenProvider:
 
     try:
       tok = json.load(f)
-      expired = tok['Credentials']['Expiration'] < time.time()
+      # adjust local time() to UTC
+      expired = tok['Credentials']['Expiration'] < time.time() + time.timezone
     finally:
       if f:
         f.close()
