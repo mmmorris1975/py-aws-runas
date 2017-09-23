@@ -1,5 +1,6 @@
 import os, time
 import json, datetime
+import calendar
 import boto3
 
 class SessionTokenProvider:
@@ -21,8 +22,8 @@ class SessionTokenProvider:
 
   def _fixup_aws_res(self, obj):
     if isinstance(obj, datetime.datetime):
-      # Use unix/posix UTC timestamp for ultimate portablility
-      return int(time.mktime(obj.utctimetuple()))
+      # Convert to unix/posix timestamp for portablility, AWS returns value in UTC
+      return int(calendar.timegm(obj.utctimetuple()))
     else:
       return obj
 
@@ -32,8 +33,7 @@ class SessionTokenProvider:
 
     try:
       tok = json.load(f)
-      # adjust local time() to UTC
-      expired = tok['Credentials']['Expiration'] < time.time() + time.timezone
+      expired = tok['Credentials']['Expiration'] < time.time()
     finally:
       if f:
         f.close()
@@ -59,6 +59,7 @@ class SessionTokenProvider:
       (res, expired) = self._fetch_cache_token()
 
     if expired:
-      res = self._fetch_fresh_token()
+      self._fetch_fresh_token()
+      (res, expired) = self._fetch_cache_token()
 
     return res
