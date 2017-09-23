@@ -115,7 +115,7 @@ def parse_aws_config(profile):
   try:
     src_profile = p.get(cfg_profile, 'source_profile')
   except:
-    src_profile = cfg_profile
+    src_profile = profile
 
   try:
     role_arn = p.get(cfg_profile, 'role_arn')
@@ -123,11 +123,11 @@ def parse_aws_config(profile):
     role_arn = None
 
   try:
-    mfa_serial = p.get(src_profile, 'mfa_serial')
+    mfa_serial = p.get(cfg_profile, 'mfa_serial')
   except:
     mfa_serial = None
 
-  return (src_profile.replace('profile ', '', 1), role_arn, mfa_serial)
+  return (src_profile, role_arn, mfa_serial)
 
 def print_creds(creds):
   exp_cmd = 'export'

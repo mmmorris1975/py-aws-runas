@@ -40,17 +40,15 @@ To configure a profile in the .aws/config file for using AssumeRole, make sure t
 set for the profile.  The `role_arn` attribute will determine which role will be assumed for that profile.  The `source_profile`
 attribute specifies the name of the profile which will be used to perform the GetSessionToken operation.
 
-If the `mfa_serial` attribute is present in the profile specified in the `source_profile` attribute, That MFA device will be used
-when requesting or refreshing the session token.
+If the `mfa_serial` attribute is present in the profile configuration, That MFA device will be used when requesting or refreshing
+the session token.
 
 Example:
 
-| [default]
-| mfa_serial = arn:aws:iam::123456789098:mfa/iam_user
-|
 | [profile admin]
 | source_profile = default
 | role_arn = arn:aws:iam::987654321098:role/admin_role
+| mfa_serial = arn:aws:iam::123456789098:mfa/iam_user
 
 Usage
 =====
