@@ -1,4 +1,5 @@
-import os, sys, time
+import os, sys
+import time, datetime
 import logging
 import boto3
 import argparse
@@ -13,7 +14,7 @@ except ImportError:
   # Python 2
   from ConfigParser import ConfigParser
 
-__VERSION__ = '0.2.0-betaF'
+__VERSION__ = '0.2.0-beta3'
 
 def parse_cmdline():
   p = argparse.ArgumentParser(description='Create an environment for interacting with the AWS API using an assumed role')
@@ -201,8 +202,16 @@ def main():
       sys.exit(0)
 
     if args.expiration:
-      # TODO print credential expiration
-      logging.info("Would print cred expiration here")
+      if creds['Expiration']:
+        pass
+        exp_dt  = datetime.datetime.fromtimestamp(creds['Expiration'])
+        delta   = exp_dt - datetime.datetime.now()
+        exp_hr  = delta.seconds / 3600.0
+        exp_min = (exp_hr - int(exp_hr)) * 60
+        logging.info("Session credentials will expire on %s (%d hours, %d minutes)", exp_dt.strftime("%c"), int(exp_hr), int(exp_min))
+      else:
+        logging.info("No credential expiration found, guessing these won't expire")
+
       sys.exit(0)
 
     tok_ses = boto3.Session( aws_access_key_id=creds['AccessKeyId'], aws_secret_access_key=creds['SecretAccessKey'],
