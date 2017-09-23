@@ -52,7 +52,7 @@ Example:
 
 Usage
 =====
-| usage: aws-runas [-h] [-l] [-m] [-e] [-s] [-v] [-V] [profile] ...
+| usage: aws-runas [-h] [-l] [-m] [-e] [-s] [-r] [-v] [-V] [profile] ...
 |
 | Create an environment for interacting with the AWS API using an assumed role
 |
@@ -66,6 +66,7 @@ Usage
 |   -m, --list-mfa    list the ARN of the MFA device associated with the account
 |   -e, --expiration  Show token expiration time
 |   -s, --session     print eval()-able session token info
+|   -r, --refresh     force a refresh of the cached credentials
 |   -v, --verbose     print verbose/debug messages
 |   -V, --version     print program version and exit
 

@@ -14,7 +14,7 @@ except ImportError:
   # Python 2
   from ConfigParser import ConfigParser
 
-__VERSION__ = '0.2.0-beta3'
+__VERSION__ = '0.2.0-beta4'
 
 def parse_cmdline():
   p = argparse.ArgumentParser(description='Create an environment for interacting with the AWS API using an assumed role')
@@ -22,6 +22,7 @@ def parse_cmdline():
   p.add_argument('-m', '--list-mfa', help='list the ARN of the MFA device associated with the account', action='store_true')
   p.add_argument('-e', '--expiration', help='Show token expiration time', action='store_true')
   p.add_argument('-s', '--session', help='print eval()-able session token info', action='store_true')
+  p.add_argument('-r', '--refresh', help='force a refresh of the cached credentials', action='store_true')
   p.add_argument('-v', '--verbose', help='print verbose/debug messages', action='store_const', const=logging.DEBUG, default=logging.INFO)
   p.add_argument('-V', '--version', help='print program version and exit', action='store_true')
   p.add_argument('profile', nargs='?', help='name of profile')
@@ -194,6 +195,10 @@ def main():
   else:
     (src_profile, role_arn, mfa_serial) = parse_aws_config(args.profile)
     p = SessionTokenProvider(profile=src_profile, mfa_serial=mfa_serial)
+
+    if args.refresh:
+      os.remove(p.cache_file)
+
     res = p.get_credentials()
 
     creds = res['Credentials']
