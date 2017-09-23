@@ -41,13 +41,16 @@ class SessionTokenProvider:
     return (tok, expired)
 
   def _fetch_fresh_token(self):
-    mfa_token = input("Enter MFA Code: ")
-
     ses = boto3.Session(profile_name=self.profile)
     sts = ses.client('sts')
-    res = sts.get_session_token(SerialNumber=self.mfa_serial, TokenCode=str(mfa_token))
-    self._update_cache(res)
 
+    if self.mfa_serial:
+      mfa_token = input("Enter MFA Code: ")
+      res = sts.get_session_token(SerialNumber=self.mfa_serial, TokenCode=str(mfa_token))
+    else:
+      res = sts.get_session_token()
+
+    self._update_cache(res)
     return res
 
   def get_credentials(self):
