@@ -14,7 +14,7 @@ except ImportError:
   # Python 2
   from ConfigParser import ConfigParser
 
-__VERSION__ = '0.2.0-beta4'
+__VERSION__ = '0.2.0'
 
 def parse_cmdline():
   p = argparse.ArgumentParser(description='Create an environment for interacting with the AWS API using an assumed role')
