@@ -33,6 +33,25 @@ Using `pip` is the preferred method to install this tool, and will install the p
 It can also be installed via `pip` from a local copy of the source repo, `pip install .` from the repo directory should do the trick.
 Running `make install` should also work as well.
 
+Configuration
+=============
+
+To configure a profile in the .aws/config file for using AssumeRole, make sure the `source_profile` and `role_arn` attributes are
+set for the profile.  The `role_arn` attribute will determine which role will be assumed for that profile.  The `source_profile`
+attribute specifies the name of the profile which will be used to perform the GetSessionToken operation.
+
+If the `mfa_serial` attribute is present in the profile specified in the `source_profile` attribute, That MFA device will be used
+when requesting or refreshing the session token.
+
+Example:
+
+| [default]
+| mfa_serial = arn:aws:iam::123456789098:mfa/iam_user
+|
+| [profile admin]
+| source_profile = default
+| role_arn = arn:aws:iam::987654321098:role/admin_role
+
 Usage
 =====
 | usage: aws-runas [-h] [-l] [-m] [-e] [-s] [-v] [-V] [profile] ...
