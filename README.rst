@@ -2,6 +2,8 @@
 AWS RUNAS
 =========
 
+*DEPRECATED* - As of Mar 1, 2018 this code should be considered deprecated.  The golang port of this tool is seeing more updates and features, and will not be back-ported to this Python version.  This repo will remain available for those wishing to fork and expand a python version of the tool.  The golang version is shipped as statically linked binaries for multiple platforms, removing the need to maintain compatibility across multiple end-user language runtimes and libraries, and can be found at https://github.com/mmmorris1975/aws-runas
+
 A command to provide a friendly way to do an AWS STS AssumeRole operation so you can perform AWS API actions
 using a particular set of permissions.  Includes integration with roles requiring MFA authentication!  Works
 off of profile names configured in the AWS SDK configuration file.
